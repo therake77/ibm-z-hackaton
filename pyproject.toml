@@ -1,0 +1,18 @@
+[project]
+name = "image-generation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0.2",
+    "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
+    "opencv-python>=5.0.0.93",
+    "pillow>=12.3.0",
+    "python-dotenv>=1.2.4",
+    "replicate>=1.0.7",
+    "requests>=2.34.2",
+    "torch>=2.14.1",
+    "transformers>=5.20.0",
+]

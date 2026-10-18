@@ -1,0 +1,55 @@
+name: Deploy to IBM Z
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ibmz
+  cancel-in-progress: false
+
+env:
+  APP_DIR: ${{ vars.IBMZ_APP_DIR || 'ibm-z-hackaton' }}
+  IMAGE: ibm-z-hackaton
+  CONTAINER: ibm-z-hackaton
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.IBMZ_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.IBMZ_PORT || 22 }}" "${{ secrets.IBMZ_HOST }}" >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<CFG
+          Host ibmz
+            HostName ${{ secrets.IBMZ_HOST }}
+            User ${{ secrets.IBMZ_USER }}
+            Port ${{ secrets.IBMZ_PORT || 22 }}
+            IdentityFile ~/.ssh/id_deploy
+          CFG
+
+      - name: Sync source
+        run: |
+          rsync -az --delete \
+            --exclude '.git' --exclude '.venv' --exclude '.env' \
+            -e ssh ./ ibmz:"$APP_DIR"/
+
+      # Built on the Z machine itself (native s390x) on top of the Jupyter image.
+      - name: Build and restart container
+        run: |
+          ssh ibmz bash -s <<REMOTE
+          set -euo pipefail
+          cd "$APP_DIR"
+          RT=\$(command -v podman || command -v docker)
+          \$RT build -t "$IMAGE:latest" .
+          \$RT rm -f "$CONTAINER" 2>/dev/null || true
+          \$RT run -d --name "$CONTAINER" --restart unless-stopped \
+            -p 127.0.0.1:8888:8888 --env-file "\$HOME/$APP_DIR.env" "$IMAGE:latest"
+          \$RT image prune -f
+          REMOTE
