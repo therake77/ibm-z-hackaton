@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Utilities such as .flex would otherwise beat the [hidden] attribute. */
+[hidden] { display: none !important; }
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { overscroll-behavior: none; }
+  :focus-visible { outline: 2px solid #63dcaa; outline-offset: 2px; }
+}
+
+/* Material Symbols are loaded from Google Fonts as a ligature font. */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+@layer components {
+  /* Header navigation */
+  .nav-link {
+    @apply px-space-md py-space-xs rounded-lg font-body-md text-body-md text-on-surface-variant transition-all hover:text-on-surface hover:bg-surface-container-high/60;
+  }
+  .nav-link[aria-current="page"] {
+    @apply bg-primary-container text-on-primary-container font-semibold;
+  }
+
+  /* Pipeline stage ribbon (results view) */
+  .stage { @apply p-space-sm rounded-lg bg-surface-container-high/60 flex items-center gap-space-sm; }
+  .stage-dot { @apply w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-surface-container-highest text-outline; }
+  .stage-label { @apply font-label-md text-label-md uppercase tracking-wider text-outline; }
+  .stage-name { @apply font-title-md text-body-sm text-on-surface-variant truncate; }
+  .stage[data-state="active"] { @apply ring-1 ring-tertiary/40; }
+  .stage[data-state="active"] .stage-dot { @apply bg-tertiary/20 text-tertiary; }
+  .stage[data-state="active"] .stage-label { @apply text-tertiary; }
+  .stage[data-state="active"] .stage-name { @apply text-on-surface; }
+  .stage[data-state="done"] .stage-dot { @apply bg-secondary/20 text-secondary; }
+  .stage[data-state="done"] .stage-name { @apply text-on-surface; }
+  .stage[data-state="final"] { @apply bg-secondary-container/30 ring-1 ring-secondary/40; }
+  .stage[data-state="final"] .stage-dot { @apply bg-secondary text-on-secondary; }
+  .stage[data-state="final"] .stage-label { @apply text-secondary; }
+  .stage[data-state="final"] .stage-name { @apply text-secondary font-semibold; }
+  .stage[data-state="error"] { @apply bg-error-container/20 ring-1 ring-error/40; }
+  .stage[data-state="error"] .stage-dot { @apply bg-error/20 text-error; }
+  .stage[data-state="error"] .stage-label { @apply text-error; }
+  .stage[data-state="error"] .stage-name { @apply text-on-error-container; }
+
+  /* Upload workflow ribbon (lab view) */
+  .flow-step { @apply relative flex items-center md:items-start gap-space-md p-space-md rounded-xl bg-surface-container/50 opacity-70 transition-all; }
+  .flow-step .flow-num { @apply shrink-0 w-10 h-10 rounded-xl bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-metric-stat text-title-md; }
+  .flow-step[data-state="active"] { @apply bg-primary-container/40 opacity-100; }
+  .flow-step[data-state="active"] .flow-num { @apply bg-secondary-container text-on-secondary-container shadow-md; }
+  .flow-step[data-state="done"] { @apply opacity-100; }
+  .flow-step[data-state="done"] .flow-num { @apply bg-secondary/20 text-secondary; }
+
+  /* Segmented controls */
+  .seg-btn { @apply flex-1 py-1.5 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-md text-label-md font-semibold text-center transition-colors hover:text-on-surface; }
+  .seg-btn[aria-pressed="true"] { @apply bg-primary-container text-on-primary-container ring-1 ring-primary/40; }
+
+  /* Primary generate button */
+  .btn-generate { @apply relative inline-flex items-center justify-center gap-space-sm px-space-xl py-space-md rounded-full font-headline-md text-title-lg tracking-wide transition-all duration-300; }
+  .btn-generate:disabled { @apply bg-surface-container-highest/60 text-outline-variant cursor-not-allowed; }
+  .btn-generate:not(:disabled) { @apply bg-tertiary text-on-tertiary shadow-[0_0_24px_rgba(244,190,99,0.35)] hover:bg-tertiary-fixed hover:text-on-tertiary-fixed cursor-pointer; }
+  .btn-generate[data-busy="true"]:not(:disabled) { @apply animate-pulse cursor-progress; }
+
+  /* Echo card preview follows the selected export format */
+  #echo-card[data-format="story"] { @apply max-w-sm; }
+  #echo-card[data-format="story"] #echo-pair { @apply grid-cols-1; }
+  #echo-card[data-format="landscape"] { @apply max-w-2xl; }
+
+  /* Narrow, unobtrusive scrollbars (the prompt <pre>, etc.) */
+  .thin-scroll { scrollbar-width: thin; scrollbar-color: #263832 transparent; }
+}

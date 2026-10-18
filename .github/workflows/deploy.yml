@@ -53,6 +53,6 @@ jobs:
           \$RT run -d --name "$CONTAINER" --restart unless-stopped \
             --memory=5g --memory-swap=5g --pids-limit=256 \
             --security-opt no-new-privileges --cap-drop ALL \
-            -p 127.0.0.1:8001:8000 --env-file "\$HOME/$APP_DIR.env" "$IMAGE:latest"
+            -p 8001:8000 --env-file "\$HOME/$APP_DIR.env" "$IMAGE:latest"
           \$RT image prune -f
           REMOTE

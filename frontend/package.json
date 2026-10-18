@@ -1,0 +1,12 @@
+{
+  "name": "minescars-frontend",
+  "private": true,
+  "description": "Build tooling for the static UI in ../dist. Output is committed; CD does not run this.",
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.js -i input.css -o ../dist/assets/minescars.css --minify",
+    "watch": "tailwindcss -c tailwind.config.js -i input.css -o ../dist/assets/minescars.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
