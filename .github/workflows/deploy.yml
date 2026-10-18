@@ -51,6 +51,6 @@ jobs:
           \$RT build -t "$IMAGE:latest" .
           \$RT rm -f "$CONTAINER" 2>/dev/null || true
           \$RT run -d --name "$CONTAINER" --restart unless-stopped \
-            -p 127.0.0.1:8001:8000 --env-file "\$HOME/$APP_DIR.env" "$IMAGE:latest"
+            -p 8001:8000 --env-file "\$HOME/$APP_DIR.env" "$IMAGE:latest"
           \$RT image prune -f
           REMOTE
