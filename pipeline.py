@@ -108,17 +108,12 @@ _model: SegformerForSemanticSegmentation | None = None
 
 
 def _get_model() -> SegformerForSemanticSegmentation:
-    """
-    Load the SegFormer model on first call; return the cached object on
-    subsequent calls. CPU-only — no CUDA API is invoked.
-    """
     global _model
     if _model is None:
         _model = SegformerForSemanticSegmentation.from_pretrained(
             MODEL_ID, 
             use_safetensors=True,
-            low_cpu_mem_usage=True,
-            dtype=torch.float16 # <--- Cambiado a 'dtype'
+            low_cpu_mem_usage=True,  # avoids the RAM spike while loading
         )
         _model = _model.to("cpu")
         _model.eval()
@@ -144,11 +139,9 @@ def _preprocess_segformer(image_pil: Image.Image) -> dict:
     arr = (arr - SEG_MEAN) / SEG_STD
     arr = np.transpose(arr, (2, 0, 1))                       # (3, 512, 512)
 
-    # Convertimos explícitamente el tensor a half precision (float16) 
-    # para que coincida con el modelo cargado y no cause conflicto de tipos
+    # float32 throughout: the model is loaded in float32, so the input must match.
     pixel_values = torch.from_numpy(np.ascontiguousarray(arr, dtype=np.float32))
-    pixel_values = pixel_values.unsqueeze(0).to(torch.float16) # (1, 3, 512, 512) en float16
-    return {"pixel_values": pixel_values}
+    return {"pixel_values": pixel_values.unsqueeze(0)}
 
 
 # ---------------------------------------------------------------------------
@@ -358,26 +351,33 @@ def _preprocess(
 # Public API
 # ---------------------------------------------------------------------------
 
-def run(image_bytes: bytes, yaml_path: str) -> str:
+def run_detailed(
+    image_bytes: bytes,
+    yaml_path: str,
+    submit: bool = True,
+    with_overlay: bool = False,
+) -> dict:
     """
-    Run the full image devastation pipeline.
+    Run the pipeline and return the intermediate artifacts as well.
 
     Args:
-        image_bytes: Raw bytes of the input image (JPEG, PNG, WebP, etc.)
-        yaml_path:   Path to the prompts YAML configuration file.
+        image_bytes:  Raw bytes of the input image (JPEG, PNG, WebP, etc.)
+        yaml_path:    Path to the prompts YAML configuration file.
+        submit:       If False, stop before Replicate (no token needed).
+        with_overlay: Also render the SegFormer class overlay (needs matplotlib;
+                      silently left as None if it is not installed).
 
-    Returns:
-        A Replicate prediction URL (str). Poll this URL with a GET request
-        to check job status and retrieve the output image when complete.
+    Returns a dict with keys: orig_size, coverage, prompt, img_ready,
+    mask_ready, overlay (PIL.Image | None), job_url (str | None).
 
     Raises:
-        ValueError:   REPLICATE_API_TOKEN is not set in the environment.
+        ValueError:   submit=True and REPLICATE_API_TOKEN is not set.
         RuntimeError: Any unrecoverable pipeline error (image decode failure,
                       YAML load failure, Replicate submission failure, etc.)
         OSError:      Temp directory creation failed (propagated as-is).
     """
     token = os.environ.get("REPLICATE_API_TOKEN")
-    if not token:
+    if submit and not token:
         raise ValueError("REPLICATE_API_TOKEN not set")
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -389,12 +389,17 @@ def run(image_bytes: bytes, yaml_path: str) -> str:
 
         # --- 2. Segmentation ---
         model = _get_model()
-        # Only write the debug overlay when explicitly requested; it is a hard
-        # dependency on matplotlib, which is not always available (e.g. s390x).
-        debug_dir = tmp if os.environ.get("PIPELINE_DEBUG") == "1" else None
+        # The overlay is a hard dependency on matplotlib, which is not always
+        # available (e.g. s390x), so it is only rendered when asked for.
+        want_overlay = with_overlay or os.environ.get("PIPELINE_DEBUG") == "1"
         mask_np, coverage = _run_segmentation(
-            image_pil, model, debug_dir=debug_dir
+            image_pil, model, debug_dir=tmp if want_overlay else None
         )
+        overlay = None
+        overlay_path = os.path.join(tmp, "debug_overlay.png")
+        if os.path.exists(overlay_path):
+            with Image.open(overlay_path) as f:
+                overlay = f.convert("RGB")
 
         # --- 3. Dynamic prompt ---
         prompt = _build_prompt(coverage, yaml_path)
@@ -402,6 +407,18 @@ def run(image_bytes: bytes, yaml_path: str) -> str:
         # --- 4. Preprocessing ---
         mask_pil = Image.fromarray(mask_np, mode="L")
         img_ready, mask_ready = _preprocess(image_pil, mask_pil)
+
+        result = {
+            "orig_size": image_pil.size,
+            "coverage": coverage,
+            "prompt": prompt,
+            "img_ready": img_ready,
+            "mask_ready": mask_ready,
+            "overlay": overlay,
+            "job_url": None,
+        }
+        if not submit:
+            return result
 
         # --- 5. Save preprocessed files to temp dir ---
         img_path = os.path.join(tmp, "img_ready.png")
@@ -431,9 +448,21 @@ def run(image_bytes: bytes, yaml_path: str) -> str:
         except Exception as exc:
             raise RuntimeError(f"Replicate submission failed: {exc}") from exc
 
-        # --- 7. Return polling URL ---
+        # --- 7. Polling URL ---
         url = prediction.urls.get("get") if prediction.urls else None
         if not url:
             raise RuntimeError("Replicate prediction URL unavailable")
 
-        return url
+        result["job_url"] = url
+        return result
+
+
+def run(image_bytes: bytes, yaml_path: str) -> str:
+    """
+    Run the full image devastation pipeline.
+
+    Returns a Replicate prediction URL (str). Poll it with a GET request to
+    check job status and retrieve the output image when complete.
+    Raises as run_detailed() does.
+    """
+    return run_detailed(image_bytes, yaml_path)["job_url"]
