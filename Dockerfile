@@ -4,8 +4,13 @@
 # s390x wheel.
 FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x:latest
 
-# Web layer only (pure Python / existing s390x wheels). torch is untouched.
-RUN pip install --no-cache-dir fastapi uvicorn python-multipart
+# Everything the app imports except torch. Already-satisfied requirements are
+# no-ops, so torch is never replaced. Versions match what the app was tested
+# with (transformers 4.x, see pyproject.toml).
+RUN pip install --no-cache-dir         fastapi uvicorn python-multipart         python-dotenv replicate pyyaml requests pillow numpy         "transformers>=4.57,<5"
+
+# Fail the build (not the running container) if an import is missing.
+RUN python -c "import torch, transformers, numpy, PIL, yaml, dotenv, replicate, requests, fastapi, uvicorn, multipart"
 
 WORKDIR /app
 COPY pipeline.py app.py smoke_test.py prompts_generalized.yaml ./
