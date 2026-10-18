@@ -5,7 +5,7 @@
 FROM registry.linuxone.cloud.marist.edu/l1cc/jupyterlab-image-s390x:latest
 
 WORKDIR /app
-COPY pipeline.py smoke_test.py main.py prompts_generalized.yaml ./
+COPY pipeline.py smoke_test.py prompts_generalized.yaml ./
 
 # REPLICATE_API_TOKEN is injected at runtime via --env-file, never baked in.
 # CMD is inherited from the base image (JupyterLab).
