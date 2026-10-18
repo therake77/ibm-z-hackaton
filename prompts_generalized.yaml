@@ -1,0 +1,50 @@
+﻿# -------------------------------------------------------------------------
+# FLUX.1 Fill - Dynamic Prompt Configuration
+# Generalized for arbitrary landscapes
+# -------------------------------------------------------------------------
+
+
+base_header: >
+  Eye-level ground-perspective photograph of a devastated illegal alluvial mining site. 
+  Harsh flat daylight, pale overcast smoggy sky, dusty and hazy polluted air, 
+  documentary photojournalism, raw unedited 35mm lens look.
+
+
+classes:
+  water_body:
+    minor: >
+      Thick opaque brown sludge, murky sediment-laden water, muddy edges, matte surface.
+    
+    moderate: >
+      Stagnant toxic mud, opaque yellowish-orange polluted water filled with floating 
+      garbage and wooden debris, matte surface.
+    
+    dominant: >
+      Vast expanse of opaque yellowish-orange toxic sludge, industrial hoses dumping 
+      wet clay, floating wooden debris, matte surface.
+
+
+  turf_ground:
+    minor: >
+      Exposed raw brown mud, coarse wet sand, and deep heavy machinery tire tracks.
+    
+    moderate: >
+      Deep muddy trenches, churned earth, scattered with rusty steel barrels and 
+      broken wooden debris.
+    
+    dominant: >
+      Massive field of excavated bare dirt, churned raw mud, large piles of loose rocks, 
+      and a makeshift camp with plastic tarps.
+
+
+  arboreal_canopy:
+    minor: >
+      Scattered broken branches, dead wood, and minor logging debris on bare dirt.
+    
+    moderate: >
+      Severely degraded land with large patches of bare dirt, scattered broken logs, 
+      and tree stumps.
+    
+    dominant: >
+      Completely deforested barren wasteland of bare dirt, stretching to the smoggy horizon, 
+      covered in scattered wooden debris, burned logs, and shattered tree stumps.
