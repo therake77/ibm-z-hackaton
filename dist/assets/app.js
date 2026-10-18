@@ -151,11 +151,46 @@
     });
   }
 
-  function stageFile(file) {
+  // The server's Pillow build has no WebP decoder (s390x, no libwebp), so
+  // WebP files are re-encoded in the browser before upload: PNG when it fits
+  // the size limit, otherwise a high-quality JPEG on a white background.
+  async function webpToUpload(file) {
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0);
+    if (bitmap.close) bitmap.close();
+    const toBlob = (type, quality) =>
+      new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+    const base = file.name.replace(/\.webp$/i, "");
+
+    const png = await toBlob("image/png");
+    if (png && png.size <= MAX_BYTES) {
+      return new File([png], `${base}.png`, { type: "image/png" });
+    }
+    ctx.globalCompositeOperation = "destination-over"; // flatten alpha onto white
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const jpg = await toBlob("image/jpeg", 0.92);
+    if (!jpg) throw new Error("encode failed");
+    return new File([jpg], `${base}.jpg`, { type: "image/jpeg" });
+  }
+
+  async function stageFile(file) {
     if (!file) return;
     if (!ALLOWED_TYPES.includes(file.type)) {
       showError("Please choose a JPG, PNG or WebP image.");
       return;
+    }
+    if (file.type === "image/webp") {
+      try {
+        file = await webpToUpload(file);
+      } catch {
+        showError("Couldn't read that WebP image. Please try a JPG or PNG.");
+        return;
+      }
     }
     if (file.size > MAX_BYTES) {
       showError(`That image is ${fmtBytes(file.size)}; the maximum is 8 MB.`);

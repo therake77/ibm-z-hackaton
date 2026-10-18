@@ -390,7 +390,10 @@ def run_detailed(
             image_pil = Image.open(io.BytesIO(image_bytes))  # lazy: header only
             pixels = image_pil.width * image_pil.height
         except Exception as exc:
-            raise RuntimeError(f"Failed to decode image: {exc}") from exc
+            raise RuntimeError(
+                f"Failed to decode image: {exc}. "
+                "Please upload a JPG or PNG (this server cannot read WebP)."
+            ) from exc
         if pixels > MAX_INPUT_PIXELS:
             raise RuntimeError(
                 f"Image too large: {pixels / 1e6:.0f} MP "
