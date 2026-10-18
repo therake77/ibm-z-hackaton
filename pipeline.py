@@ -179,9 +179,10 @@ def _run_segmentation(
     upsampled = F.interpolate(
         logits, size=(h, w), mode="bilinear", align_corners=False
     )
-    probs = F.softmax(upsampled, dim=1)[0]          # (num_classes, H, W)
+    # argmax over raw logits equals argmax over softmax; skipping the softmax
+    # avoids a second (num_classes, H, W) float tensor.
     pred_seg = upsampled.argmax(dim=1)[0].cpu().numpy()   # (H, W)
-    max_probs = probs.max(dim=0).values.cpu().numpy()     # (H, W)
+    del upsampled, logits
     total_pixels = pred_seg.size
 
     mask_binary = np.zeros(pred_seg.shape, dtype=np.uint8)
@@ -386,6 +387,18 @@ def run_detailed(
             image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         except Exception as exc:
             raise RuntimeError(f"Failed to decode image: {exc}") from exc
+        orig_size = image_pil.size
+
+        # Cap the working size up front. Segmentation upsamples ~150 class
+        # logits to the image size (150 x H x W floats), which for a 12 MP photo
+        # needs several GB; everything downstream is <= MAX_DIM anyway.
+        if max(image_pil.size) > MAX_DIM:
+            ratio = MAX_DIM / float(max(image_pil.size))
+            image_pil = image_pil.resize(
+                (max(1, int(image_pil.width * ratio)),
+                 max(1, int(image_pil.height * ratio))),
+                Image.Resampling.LANCZOS,
+            )
 
         # --- 2. Segmentation ---
         model = _get_model()
@@ -409,7 +422,7 @@ def run_detailed(
         img_ready, mask_ready = _preprocess(image_pil, mask_pil)
 
         result = {
-            "orig_size": image_pil.size,
+            "orig_size": orig_size,
             "coverage": coverage,
             "prompt": prompt,
             "img_ready": img_ready,
