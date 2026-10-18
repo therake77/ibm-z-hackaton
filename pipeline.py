@@ -35,6 +35,9 @@ load_dotenv()
 MODEL_ID = "starry12tree/segformer-b2-finetuned-ade-512-512"
 REPLICATE_MODEL = "black-forest-labs/flux-fill-dev"
 MAX_DIM = 1024
+# Reject absurdly large inputs before decoding them fully (decompression bombs,
+# 100 MP panoramas). 40 MP covers any phone camera.
+MAX_INPUT_PIXELS = 40_000_000
 
 # ADE20K label keywords that map to impact mask value 255 (inpaint these areas)
 IMPACT_KEYWORDS = [
@@ -384,7 +387,17 @@ def run_detailed(
     with tempfile.TemporaryDirectory() as tmp:
         # --- 1. Decode input image ---
         try:
-            image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            image_pil = Image.open(io.BytesIO(image_bytes))  # lazy: header only
+            pixels = image_pil.width * image_pil.height
+        except Exception as exc:
+            raise RuntimeError(f"Failed to decode image: {exc}") from exc
+        if pixels > MAX_INPUT_PIXELS:
+            raise RuntimeError(
+                f"Image too large: {pixels / 1e6:.0f} MP "
+                f"(max {MAX_INPUT_PIXELS // 1_000_000} MP)"
+            )
+        try:
+            image_pil = image_pil.convert("RGB")
         except Exception as exc:
             raise RuntimeError(f"Failed to decode image: {exc}") from exc
         orig_size = image_pil.size

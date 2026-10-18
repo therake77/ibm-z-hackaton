@@ -18,6 +18,12 @@ COPY dist ./dist
 
 EXPOSE 8000
 
+# Trust X-Forwarded-For only from the Docker bridge gateway, which is where
+# traffic published through the host (e.g. an SSH tunnel) arrives from. Needed
+# so the per-IP rate limits see real client addresses. Override at `docker run`
+# if the bridge subnet differs.
+ENV FORWARDED_ALLOW_IPS=172.17.0.1
+
 # REPLICATE_API_TOKEN is injected at runtime via --env-file, never baked in.
 # This replaces the base image's JupyterLab as the container's main process.
 CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
