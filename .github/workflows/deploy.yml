@@ -45,6 +45,7 @@ jobs:
         run: |
           ssh ibmz bash -s <<REMOTE
           set -euo pipefail
+          [ -f "\$HOME/$APP_DIR.env" ] || { echo "Missing \$HOME/$APP_DIR.env (needs REPLICATE_API_TOKEN)"; exit 1; }
           cd "$APP_DIR"
           RT=\$(command -v podman || command -v docker)
           \$RT build -t "$IMAGE:latest" .
